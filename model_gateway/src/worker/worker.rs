@@ -40,13 +40,13 @@ use crate::{
 /// Default HTTP client timeout for worker requests (in seconds)
 pub const DEFAULT_WORKER_HTTP_TIMEOUT_SECS: u64 = 30;
 
-/// Per-worker HTTP client with an isolated connection pool, materialized on
-/// first use.
+/// A worker's HTTP client handle, materialized on first use.
 ///
-/// A worker whose connection mode never speaks HTTP (ZMQ: local health check,
-/// admin ops rejected up front) would otherwise pay for a connector and idle
-/// pool it can never use, so the fallback client is built only when a caller
-/// actually asks for it.
+/// Registration hands in a shared client from the worker client cache. A
+/// worker built without one whose connection mode never speaks HTTP (ZMQ:
+/// local health check, admin ops rejected up front) would otherwise pay for a
+/// connector and idle pool it can never use, so the fallback client is built
+/// only when a caller actually asks for it.
 pub struct LazyHttpClient {
     cell: OnceLock<reqwest::Client>,
 }
@@ -1130,8 +1130,8 @@ pub struct BasicWorker {
     /// When not `Wildcard`, overrides metadata.models for routing decisions.
     /// Uses `ArcSwap` for lock-free reads on the hot path (`supports_model`).
     pub models_override: Arc<ArcSwap<WorkerModels>>,
-    /// Per-worker HTTP client with isolated connection pool, built on first
-    /// use (see [`LazyHttpClient`]).
+    /// Worker-directed HTTP client, shared across same-config workers, built
+    /// on first use (see [`LazyHttpClient`]).
     pub http_client: Arc<LazyHttpClient>,
     /// Resolved resilience config (retry + circuit breaker settings).
     pub resilience: ResolvedResilience,
